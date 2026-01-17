@@ -57,33 +57,63 @@ export default {
           border: "hsl(var(--sidebar-border))",
           ring: "hsl(var(--sidebar-ring))",
         },
+        glass: "hsl(var(--glass))",
       },
       borderRadius: {
         lg: "var(--radius)",
         md: "calc(var(--radius) - 2px)",
         sm: "calc(var(--radius) - 4px)",
+        "2xl": "1rem",
+        "3xl": "1.5rem",
+      },
+      fontFamily: {
+        sans: ['Inter', 'sans-serif'],
       },
       keyframes: {
         "accordion-down": {
-          from: {
-            height: "0",
-          },
-          to: {
-            height: "var(--radix-accordion-content-height)",
-          },
+          from: { height: "0" },
+          to: { height: "var(--radix-accordion-content-height)" },
         },
         "accordion-up": {
-          from: {
-            height: "var(--radix-accordion-content-height)",
+          from: { height: "var(--radix-accordion-content-height)" },
+          to: { height: "0" },
+        },
+        "pulse-glow": {
+          "0%, 100%": { 
+            opacity: "1",
+            transform: "scale(1)",
           },
-          to: {
-            height: "0",
+          "50%": { 
+            opacity: "0.7",
+            transform: "scale(1.05)",
+          },
+        },
+        "ripple": {
+          "0%": { 
+            transform: "scale(0.8)",
+            opacity: "1",
+          },
+          "100%": { 
+            transform: "scale(2.5)",
+            opacity: "0",
+          },
+        },
+        "flash": {
+          "0%, 100%": { 
+            borderColor: "hsl(var(--border))",
+          },
+          "50%": { 
+            borderColor: "hsl(var(--primary))",
+            boxShadow: "0 0 20px hsl(187 100% 50% / 0.3)",
           },
         },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
         "accordion-up": "accordion-up 0.2s ease-out",
+        "pulse-glow": "pulse-glow 2s ease-in-out infinite",
+        "ripple": "ripple 2s ease-out infinite",
+        "flash": "flash 1s ease-in-out",
       },
     },
   },
