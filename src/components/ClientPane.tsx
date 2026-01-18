@@ -3,7 +3,7 @@ import VoiceOrb from "./VoiceOrb";
 import StatusBar from "./StatusBar";
 import EmailCapture from "./EmailCapture";
 import OrderSummary, { OrderItem } from "./OrderSummary";
-import { Play } from "lucide-react";
+import { Play, Square } from "lucide-react";
 
 interface ClientPaneProps {
   isActive: boolean;
@@ -11,6 +11,7 @@ interface ClientPaneProps {
   showEmail: boolean;
   orderItems: OrderItem[];
   onStartDemo: () => void;
+  onStopDemo: () => void;
 }
 
 const ClientPane = ({ 
@@ -18,7 +19,8 @@ const ClientPane = ({
   status, 
   showEmail, 
   orderItems, 
-  onStartDemo 
+  onStartDemo,
+  onStopDemo,
 }: ClientPaneProps) => {
   return (
     <div className="h-full flex flex-col items-center justify-center gap-8 p-6">
@@ -34,8 +36,8 @@ const ClientPane = ({
       {/* Status Bar */}
       <StatusBar status={status} />
       
-      {/* Start Demo Button */}
-      {status === "idle" && (
+      {/* Start/Stop Demo Button */}
+      {status === "idle" ? (
         <motion.button
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -47,6 +49,18 @@ const ClientPane = ({
         >
           <Play className="w-5 h-5" />
           Start Demo
+        </motion.button>
+      ) : (
+        <motion.button
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          onClick={onStopDemo}
+          whileHover={{ scale: 1.05 }}
+          whileTap={{ scale: 0.95 }}
+          className="flex items-center gap-2 px-6 py-3 rounded-2xl bg-destructive text-destructive-foreground font-semibold hover:bg-destructive/90 transition-all"
+        >
+          <Square className="w-5 h-5" />
+          End Call
         </motion.button>
       )}
       

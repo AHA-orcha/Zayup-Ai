@@ -1,134 +1,157 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useCallback } from "react";
 import { motion } from "framer-motion";
 import Header from "@/components/Header";
 import ClientPane from "@/components/ClientPane";
 import AdminPanel, { Order, LogEntry } from "@/components/AdminPanel";
 import { OrderItem } from "@/components/OrderSummary";
+import { useVapi, VapiStatus } from "@/hooks/useVapi";
 
-const DEMO_ITEMS: OrderItem[] = [
-  { id: "1", name: "Double Cheeseburger", modification: "No onions, extra pickles", price: 12.99 },
-  { id: "2", name: "Large Fries", modification: "Seasoned", price: 4.99 },
-  { id: "3", name: "Chocolate Milkshake", price: 5.99 },
-];
-
-const DEMO_LOGS: Omit<LogEntry, "id">[] = [
-  { timestamp: "12:34:01", type: "SYSTEM", message: "Voice agent initialized" },
-  { timestamp: "12:34:03", type: "MCP", message: "order-start triggered" },
-  { timestamp: "12:34:08", type: "API", message: "Menu data fetched successfully" },
-  { timestamp: "12:34:15", type: "MCP", message: "item-add: Double Cheeseburger" },
-  { timestamp: "12:34:22", type: "MCP", message: "item-modify: No onions, extra pickles" },
-  { timestamp: "12:34:30", type: "MCP", message: "item-add: Large Fries" },
-  { timestamp: "12:34:38", type: "MCP", message: "item-add: Chocolate Milkshake" },
-  { timestamp: "12:34:45", type: "API", message: "Order validated" },
-  { timestamp: "12:34:48", type: "MCP", message: "email-capture triggered" },
-  { timestamp: "12:34:55", type: "API", message: "Data Sync Complete" },
-  { timestamp: "12:35:02", type: "MCP", message: "order-accept triggered" },
-];
+// Your Vapi Assistant IDs - replace these with your actual IDs
+const INTRO_ASSISTANT_ID = "your-intro-assistant-id"; // Zayup intro bot
+const DEMO_ASSISTANT_ID = "your-demo-assistant-id";   // Demo bot with MCP tools
 
 const Index = () => {
-  const [status, setStatus] = useState<"idle" | "listening" | "processing">("idle");
   const [orderItems, setOrderItems] = useState<OrderItem[]>([]);
   const [orders, setOrders] = useState<Order[]>([]);
   const [logs, setLogs] = useState<LogEntry[]>([]);
   const [showEmail, setShowEmail] = useState(false);
-  const [demoStep, setDemoStep] = useState(0);
+  const [currentAssistant, setCurrentAssistant] = useState<"intro" | "demo">("intro");
 
-  const addLog = useCallback((log: Omit<LogEntry, "id">) => {
-    setLogs(prev => [...prev, { ...log, id: Date.now().toString() }]);
+  const addLog = useCallback((type: LogEntry["type"], message: string) => {
+    const timestamp = new Date().toLocaleTimeString([], { 
+      hour: '2-digit', 
+      minute: '2-digit', 
+      second: '2-digit' 
+    });
+    setLogs(prev => [...prev, { id: Date.now().toString(), timestamp, type, message }]);
   }, []);
 
   const addOrderItem = useCallback((item: OrderItem) => {
-    setOrderItems(prev => [...prev, item]);
-  }, []);
+    setOrderItems(prev => [...prev, { ...item, id: Date.now().toString() }]);
+    addLog("MCP", `item-add: ${item.name}`);
+  }, [addLog]);
 
-  const addOrder = useCallback((order: Omit<Order, "id">) => {
+  const addOrder = useCallback((items: string[]) => {
     setOrders(prev => [
-      { ...order, id: (1001 + prev.length).toString(), isNew: true },
+      { 
+        id: (1001 + prev.length).toString(), 
+        items, 
+        status: "pending", 
+        time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        isNew: true 
+      },
       ...prev.map(o => ({ ...o, isNew: false }))
     ]);
-  }, []);
+    addLog("MCP", "order-accept triggered");
+  }, [addLog]);
 
-  const runDemo = useCallback(() => {
-    setStatus("listening");
-    setDemoStep(1);
-  }, []);
+  // Handle MCP function calls from Vapi
+  const handleFunctionCall = useCallback((name: string, params: Record<string, unknown>) => {
+    addLog("MCP", `${name} triggered`);
 
-  useEffect(() => {
-    if (demoStep === 0) return;
-
-    const timeouts: NodeJS.Timeout[] = [];
-
-    // Step 1: Initial logs
-    if (demoStep === 1) {
-      timeouts.push(setTimeout(() => addLog(DEMO_LOGS[0]), 500));
-      timeouts.push(setTimeout(() => addLog(DEMO_LOGS[1]), 1500));
-      timeouts.push(setTimeout(() => addLog(DEMO_LOGS[2]), 2500));
-      timeouts.push(setTimeout(() => setDemoStep(2), 3000));
-    }
-
-    // Step 2: Add items
-    if (demoStep === 2) {
-      timeouts.push(setTimeout(() => {
-        setStatus("processing");
-        addLog(DEMO_LOGS[3]);
-      }, 500));
-      timeouts.push(setTimeout(() => {
-        addLog(DEMO_LOGS[4]);
-        addOrderItem(DEMO_ITEMS[0]);
-        setStatus("listening");
-      }, 1500));
-      timeouts.push(setTimeout(() => {
-        setStatus("processing");
-        addLog(DEMO_LOGS[5]);
-      }, 3000));
-      timeouts.push(setTimeout(() => {
-        addOrderItem(DEMO_ITEMS[1]);
-        setStatus("listening");
-      }, 4000));
-      timeouts.push(setTimeout(() => {
-        setStatus("processing");
-        addLog(DEMO_LOGS[6]);
-      }, 5500));
-      timeouts.push(setTimeout(() => {
-        addOrderItem(DEMO_ITEMS[2]);
-        setStatus("listening");
-      }, 6500));
-      timeouts.push(setTimeout(() => setDemoStep(3), 7500));
-    }
-
-    // Step 3: Email capture
-    if (demoStep === 3) {
-      timeouts.push(setTimeout(() => {
-        setStatus("processing");
-        addLog(DEMO_LOGS[7]);
-      }, 500));
-      timeouts.push(setTimeout(() => {
-        addLog(DEMO_LOGS[8]);
-        setShowEmail(true);
-        setStatus("listening");
-      }, 1500));
-      timeouts.push(setTimeout(() => setDemoStep(4), 3000));
-    }
-
-    // Step 4: Complete order
-    if (demoStep === 4) {
-      timeouts.push(setTimeout(() => {
-        setStatus("processing");
-        addLog(DEMO_LOGS[9]);
-      }, 500));
-      timeouts.push(setTimeout(() => {
-        addLog(DEMO_LOGS[10]);
-        addOrder({
-          items: orderItems.map(i => i.name),
-          status: "pending",
-          time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+    switch (name) {
+      case "add_item":
+      case "add-item":
+      case "addItem":
+        addOrderItem({
+          id: "",
+          name: params.name as string || params.item_name as string,
+          modification: params.modification as string,
+          price: params.price as number || 0,
         });
-        setStatus("idle");
-      }, 2000));
-    }
+        break;
 
-    return () => timeouts.forEach(clearTimeout);
-  }, [demoStep, addLog, addOrderItem, addOrder, orderItems]);
+      case "modify_item":
+      case "modify-item":
+      case "modifyItem":
+        setOrderItems(prev => prev.map(item => 
+          item.name === (params.item_name as string || params.name as string)
+            ? { ...item, modification: params.modification as string }
+            : item
+        ));
+        break;
+
+      case "remove_item":
+      case "remove-item":
+      case "removeItem":
+        setOrderItems(prev => prev.filter(item => 
+          item.name !== (params.item_name as string || params.name as string)
+        ));
+        break;
+
+      case "capture_email":
+      case "capture-email":
+      case "captureEmail":
+      case "show_email":
+      case "showEmail":
+        setShowEmail(true);
+        addLog("MCP", "email-capture triggered");
+        break;
+
+      case "place_order":
+      case "place-order":
+      case "placeOrder":
+      case "submit_order":
+      case "submitOrder":
+        addOrder(orderItems.map(i => i.name));
+        addLog("API", "Order submitted to Restarage");
+        break;
+
+      case "switch_to_demo":
+      case "switchToDemo":
+      case "transfer_to_demo":
+        // Switch from intro bot to demo bot
+        setCurrentAssistant("demo");
+        addLog("SYSTEM", "Switching to demo assistant...");
+        // The actual switch happens via stopCall + startCall
+        break;
+
+      default:
+        addLog("MCP", `Unknown function: ${name}`);
+    }
+  }, [addOrderItem, addOrder, orderItems, addLog]);
+
+  const { status, startCall, stopCall } = useVapi({
+    onCallStart: () => {
+      addLog("SYSTEM", `${currentAssistant === "intro" ? "Intro" : "Demo"} voice agent connected`);
+    },
+    onCallEnd: () => {
+      addLog("SYSTEM", "Voice agent disconnected");
+    },
+    onSpeechStart: () => {
+      addLog("SYSTEM", "User speaking...");
+    },
+    onSpeechEnd: () => {
+      addLog("SYSTEM", "Processing speech...");
+    },
+    onFunctionCall: handleFunctionCall,
+    onMessage: (message) => {
+      if (message.type === "transcript" && message.role === "assistant") {
+        addLog("API", `Ava: ${message.transcript?.substring(0, 50)}...`);
+      }
+    },
+    onError: (error) => {
+      addLog("SYSTEM", `Error: ${error.message}`);
+    },
+  });
+
+  const handleStartDemo = useCallback(() => {
+    const assistantId = currentAssistant === "intro" ? INTRO_ASSISTANT_ID : DEMO_ASSISTANT_ID;
+    startCall(assistantId);
+    addLog("SYSTEM", "Initializing voice connection...");
+  }, [currentAssistant, startCall, addLog]);
+
+  const handleStopDemo = useCallback(() => {
+    stopCall();
+    setOrderItems([]);
+    setShowEmail(false);
+  }, [stopCall]);
+
+  // Map Vapi status to our UI status
+  const uiStatus: "idle" | "listening" | "processing" = 
+    status === "connecting" ? "processing" : 
+    status === "idle" ? "idle" : 
+    status;
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
@@ -145,10 +168,11 @@ const Index = () => {
         >
           <ClientPane
             isActive={status !== "idle"}
-            status={status}
+            status={uiStatus}
             showEmail={showEmail}
             orderItems={orderItems}
-            onStartDemo={runDemo}
+            onStartDemo={handleStartDemo}
+            onStopDemo={handleStopDemo}
           />
         </motion.div>
         
