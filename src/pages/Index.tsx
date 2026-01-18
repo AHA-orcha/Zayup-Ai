@@ -7,15 +7,15 @@ import { OrderItem } from "@/components/OrderSummary";
 import { useVapi, VapiStatus } from "@/hooks/useVapi";
 
 // Your Vapi Assistant IDs - replace these with your actual IDs
-const INTRO_ASSISTANT_ID = "your-intro-assistant-id"; // Zayup intro bot
-const DEMO_ASSISTANT_ID = "your-demo-assistant-id";   // Demo bot with MCP tools
+const INTRO_ASSISTANT_ID = ""; // Zayup intro bot (add ID when ready)
+const DEMO_ASSISTANT_ID = "c8951f28-76ac-4c9e-ba73-b51fb6b8af6f"; // Demo bot with MCP tools
 
 const Index = () => {
   const [orderItems, setOrderItems] = useState<OrderItem[]>([]);
   const [orders, setOrders] = useState<Order[]>([]);
   const [logs, setLogs] = useState<LogEntry[]>([]);
   const [showEmail, setShowEmail] = useState(false);
-  const [currentAssistant, setCurrentAssistant] = useState<"intro" | "demo">("intro");
+  const [currentAssistant, setCurrentAssistant] = useState<"intro" | "demo">("demo");
 
   const addLog = useCallback((type: LogEntry["type"], message: string) => {
     const timestamp = new Date().toLocaleTimeString([], { 
