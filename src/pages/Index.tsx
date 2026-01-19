@@ -1,18 +1,21 @@
 import { useState, useCallback } from "react";
-import { motion } from "framer-motion";
-import Header from "@/components/Header";
-import ClientPane from "@/components/ClientPane";
-import AdminPanel, { Order, LogEntry } from "@/components/AdminPanel";
+import { motion, AnimatePresence } from "framer-motion";
+import { Cpu } from "lucide-react";
+import VoiceOrb from "@/components/VoiceOrb";
+import AgentIndicator from "@/components/AgentIndicator";
+import BackgroundEffects from "@/components/BackgroundEffects";
+import LivePanel from "@/components/LivePanel";
+import EmailCapture from "@/components/EmailCapture";
 import { OrderItem } from "@/components/OrderSummary";
+import { LogEntry } from "@/components/AdminPanel";
 import { useVapi, VapiStatus } from "@/hooks/useVapi";
 
-// Your Vapi Assistant IDs - replace these with your actual IDs
+// Your Vapi Assistant IDs
 const INTRO_ASSISTANT_ID = ""; // Zayup intro bot (add ID when ready)
 const DEMO_ASSISTANT_ID = "c8951f28-76ac-4c9e-ba73-b51fb6b8af6f"; // Demo bot with MCP tools
 
 const Index = () => {
   const [orderItems, setOrderItems] = useState<OrderItem[]>([]);
-  const [orders, setOrders] = useState<Order[]>([]);
   const [logs, setLogs] = useState<LogEntry[]>([]);
   const [showEmail, setShowEmail] = useState(false);
   const [currentAssistant, setCurrentAssistant] = useState<"intro" | "demo">("demo");
@@ -23,7 +26,7 @@ const Index = () => {
       minute: '2-digit', 
       second: '2-digit' 
     });
-    setLogs(prev => [...prev, { id: Date.now().toString(), timestamp, type, message }]);
+    setLogs(prev => [...prev.slice(-50), { id: Date.now().toString(), timestamp, type, message }]);
   }, []);
 
   const addOrderItem = useCallback((item: OrderItem) => {
@@ -31,23 +34,9 @@ const Index = () => {
     addLog("MCP", `item-add: ${item.name}`);
   }, [addLog]);
 
-  const addOrder = useCallback((items: string[]) => {
-    setOrders(prev => [
-      { 
-        id: (1001 + prev.length).toString(), 
-        items, 
-        status: "pending", 
-        time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-        isNew: true 
-      },
-      ...prev.map(o => ({ ...o, isNew: false }))
-    ]);
-    addLog("MCP", "order-accept triggered");
-  }, [addLog]);
-
   // Handle MCP function calls from Vapi
   const handleFunctionCall = useCallback((name: string, params: Record<string, unknown>) => {
-    addLog("MCP", `${name} triggered`);
+    addLog("MCP", `${name} called`);
 
     switch (name) {
       case "add_item":
@@ -69,6 +58,7 @@ const Index = () => {
             ? { ...item, modification: params.modification as string }
             : item
         ));
+        addLog("MCP", `Modified: ${params.item_name || params.name}`);
         break;
 
       case "remove_item":
@@ -77,6 +67,7 @@ const Index = () => {
         setOrderItems(prev => prev.filter(item => 
           item.name !== (params.item_name as string || params.name as string)
         ));
+        addLog("MCP", `Removed: ${params.item_name || params.name}`);
         break;
 
       case "capture_email":
@@ -84,8 +75,9 @@ const Index = () => {
       case "captureEmail":
       case "show_email":
       case "showEmail":
+      case "trigger_email_input":
         setShowEmail(true);
-        addLog("MCP", "email-capture triggered");
+        addLog("MCP", "Email capture triggered");
         break;
 
       case "place_order":
@@ -93,41 +85,46 @@ const Index = () => {
       case "placeOrder":
       case "submit_order":
       case "submitOrder":
-        addOrder(orderItems.map(i => i.name));
-        addLog("API", "Order submitted to Restarage");
+      case "order-validate":
+        addLog("API", "Order validated & submitted");
+        addLog("SYSTEM", "Sending receipt email...");
         break;
 
       case "switch_to_demo":
       case "switchToDemo":
       case "transfer_to_demo":
-        // Switch from intro bot to demo bot
         setCurrentAssistant("demo");
-        addLog("SYSTEM", "Switching to demo assistant...");
-        // The actual switch happens via stopCall + startCall
+        addLog("SYSTEM", "Switching to demo agent...");
+        break;
+
+      case "menu-export":
+      case "menuExport":
+        addLog("MCP", "Menu data exported to agent");
         break;
 
       default:
-        addLog("MCP", `Unknown function: ${name}`);
+        addLog("MCP", `Function: ${name}`);
     }
-  }, [addOrderItem, addOrder, orderItems, addLog]);
+  }, [addOrderItem, addLog]);
 
   const { status, startCall, stopCall } = useVapi({
     onCallStart: () => {
-      addLog("SYSTEM", `${currentAssistant === "intro" ? "Intro" : "Demo"} voice agent connected`);
+      addLog("SYSTEM", `Connected to ${currentAssistant === "intro" ? "Zayup AI" : "Ava"}`);
     },
     onCallEnd: () => {
-      addLog("SYSTEM", "Voice agent disconnected");
+      addLog("SYSTEM", "Call ended");
     },
     onSpeechStart: () => {
-      addLog("SYSTEM", "User speaking...");
+      addLog("SYSTEM", "Listening...");
     },
     onSpeechEnd: () => {
-      addLog("SYSTEM", "Processing speech...");
+      addLog("SYSTEM", "Processing...");
     },
     onFunctionCall: handleFunctionCall,
     onMessage: (message) => {
       if (message.type === "transcript" && message.role === "assistant") {
-        addLog("API", `Ava: ${message.transcript?.substring(0, 50)}...`);
+        const preview = message.transcript?.substring(0, 40) || "";
+        addLog("API", `Response: ${preview}...`);
       }
     },
     onError: (error) => {
@@ -135,57 +132,118 @@ const Index = () => {
     },
   });
 
-  const handleStartDemo = useCallback(() => {
-    const assistantId = currentAssistant === "intro" ? INTRO_ASSISTANT_ID : DEMO_ASSISTANT_ID;
+  const handleStartCall = useCallback(() => {
+    const assistantId = currentAssistant === "intro" && INTRO_ASSISTANT_ID 
+      ? INTRO_ASSISTANT_ID 
+      : DEMO_ASSISTANT_ID;
     startCall(assistantId);
-    addLog("SYSTEM", "Initializing voice connection...");
+    addLog("SYSTEM", "Initiating connection...");
   }, [currentAssistant, startCall, addLog]);
 
-  const handleStopDemo = useCallback(() => {
+  const handleStopCall = useCallback(() => {
     stopCall();
     setOrderItems([]);
     setShowEmail(false);
   }, [stopCall]);
 
-  // Map Vapi status to our UI status
-  const uiStatus: "idle" | "listening" | "processing" = 
-    status === "connecting" ? "processing" : 
-    status === "idle" ? "idle" : 
-    status;
+  const isActive = status !== "idle";
 
   return (
-    <div className="min-h-screen bg-background flex flex-col">
-      <Header />
-      
-      {/* Main Content */}
-      <main className="flex-1 pt-20 flex flex-col lg:flex-row">
-        {/* Client Pane */}
+    <div className="min-h-screen bg-background overflow-hidden relative">
+      {/* Background Effects */}
+      <BackgroundEffects isActive={isActive} />
+
+      {/* Header */}
+      <motion.header
+        initial={{ opacity: 0, y: -20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="fixed top-0 left-0 right-0 z-50 px-6 py-4"
+      >
+        <div className="flex items-center justify-between max-w-7xl mx-auto">
+          <div className="flex items-center gap-3">
+            <div className="p-2 rounded-xl bg-primary/10 border border-primary/20">
+              <Cpu className="w-6 h-6 text-primary" />
+            </div>
+            <div>
+              <span className="text-xl font-bold text-foreground">
+                Zayup<span className="text-primary">.ai</span>
+              </span>
+              <p className="text-xs text-muted-foreground">Voice-First CRM Automation</p>
+            </div>
+          </div>
+
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ delay: 0.2 }}
+            className="hidden md:block"
+          >
+            <AgentIndicator currentAgent={currentAssistant} isActive={isActive} />
+          </motion.div>
+        </div>
+      </motion.header>
+
+      {/* Main Content - Centered Orb */}
+      <main className="min-h-screen flex flex-col items-center justify-center px-6">
+        {/* Agent Indicator for Mobile */}
         <motion.div
-          initial={{ opacity: 0, x: -20 }}
-          animate={{ opacity: 1, x: 0 }}
-          transition={{ delay: 0.1 }}
-          className="lg:w-[40%] min-h-[60vh] lg:min-h-0 border-b lg:border-b-0 lg:border-r border-border/30"
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.3 }}
+          className="md:hidden mb-8"
         >
-          <ClientPane
-            isActive={status !== "idle"}
-            status={uiStatus}
-            showEmail={showEmail}
-            orderItems={orderItems}
-            onStartDemo={handleStartDemo}
-            onStopDemo={handleStopDemo}
+          <AgentIndicator currentAgent={currentAssistant} isActive={isActive} />
+        </motion.div>
+
+        {/* Voice Orb */}
+        <motion.div
+          initial={{ opacity: 0, scale: 0.8 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ type: "spring", damping: 20, delay: 0.2 }}
+        >
+          <VoiceOrb
+            isActive={isActive}
+            status={status}
+            currentAgent={currentAssistant}
+            onStart={handleStartCall}
+            onStop={handleStopCall}
           />
         </motion.div>
-        
-        {/* Admin Panel */}
+
+        {/* Email Capture Overlay */}
+        <AnimatePresence>
+          {showEmail && (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 20 }}
+              className="mt-8"
+            >
+              <EmailCapture isVisible={showEmail} />
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Tagline */}
         <motion.div
-          initial={{ opacity: 0, x: 20 }}
-          animate={{ opacity: 1, x: 0 }}
-          transition={{ delay: 0.2 }}
-          className="lg:w-[60%] min-h-[40vh] lg:min-h-0 glass"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.6 }}
+          className="mt-16 text-center max-w-md"
         >
-          <AdminPanel orders={orders} logs={logs} />
+          <p className="text-muted-foreground text-sm leading-relaxed">
+            Experience the future of restaurant ordering. Our AI agents handle calls, 
+            take orders, and process payments — all through natural conversation.
+          </p>
         </motion.div>
       </main>
+
+      {/* Live Panel - Shows order & logs when active */}
+      <LivePanel
+        orderItems={orderItems}
+        logs={logs}
+        isVisible={isActive}
+      />
     </div>
   );
 };
