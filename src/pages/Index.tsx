@@ -1,5 +1,4 @@
 import { useState, useCallback } from "react";
-import { motion, AnimatePresence } from "framer-motion";
 import { Radio, Zap } from "lucide-react";
 import VoiceOrb from "@/components/VoiceOrb";
 import AgentIndicator from "@/components/AgentIndicator";
@@ -166,14 +165,10 @@ const Index = () => {
       <BackgroundEffects isActive={isActive} />
 
       {/* Header */}
-      <motion.header
-        initial={{ opacity: 0, y: -20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="fixed top-0 left-0 right-0 z-50 px-6 py-4 backdrop-blur-md bg-background/60 border-b border-border/30"
-      >
+      <header className="fixed top-0 left-0 right-0 z-50 px-6 py-4 backdrop-blur-md bg-background/60 border-b border-border/30">
         <div className="flex items-center justify-between max-w-7xl mx-auto">
           <div className="flex items-center gap-3">
-            <div className="p-2.5 rounded-xl bg-gradient-to-br from-primary/20 to-primary/5 border border-primary/30 glow-primary">
+            <div className="p-2.5 rounded-xl bg-gradient-to-br from-primary/20 to-primary/5 border border-primary/30">
               <Zap className="w-5 h-5 text-primary" />
             </div>
             <div>
@@ -186,76 +181,43 @@ const Index = () => {
 
           <div className="flex items-center gap-4">
             {/* Live Demo Badge */}
-            <motion.div
-              initial={{ opacity: 0, scale: 0.9 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ delay: 0.1 }}
-              className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/30"
-            >
-              <Radio className="w-3.5 h-3.5 text-emerald-400 animate-pulse" />
+            <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/30">
+              <Radio className="w-3.5 h-3.5 text-emerald-400" />
               <span className="text-xs font-medium text-emerald-400">Live Demo</span>
-            </motion.div>
+            </div>
 
-            <motion.div
-              initial={{ opacity: 0, scale: 0.9 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ delay: 0.2 }}
-              className="hidden md:block"
-            >
+            <div className="hidden md:block">
               <AgentIndicator currentAgent={currentAssistant} isActive={isActive} />
-            </motion.div>
+            </div>
           </div>
         </div>
-      </motion.header>
+      </header>
 
       {/* Main Content - Centered Orb */}
       <main className="min-h-screen flex flex-col items-center justify-center px-6">
         {/* Agent Indicator for Mobile */}
-        <motion.div
-          initial={{ opacity: 0, y: -10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.3 }}
-          className="md:hidden mb-8"
-        >
+        <div className="md:hidden mb-8">
           <AgentIndicator currentAgent={currentAssistant} isActive={isActive} />
-        </motion.div>
+        </div>
 
         {/* Voice Orb */}
-        <motion.div
-          initial={{ opacity: 0, scale: 0.8 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ type: "spring", damping: 20, delay: 0.2 }}
-        >
-          <VoiceOrb
-            isActive={isActive}
-            status={status}
-            currentAgent={currentAssistant}
-            onStart={handleStartCall}
-            onStop={handleStopCall}
-          />
-        </motion.div>
+        <VoiceOrb
+          isActive={isActive}
+          status={status}
+          currentAgent={currentAssistant}
+          onStart={handleStartCall}
+          onStop={handleStopCall}
+        />
 
         {/* Email Capture Overlay */}
-        <AnimatePresence>
-          {showEmail && (
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: 20 }}
-              className="mt-8"
-            >
-              <EmailCapture isVisible={showEmail} />
-            </motion.div>
-          )}
-        </AnimatePresence>
+        {showEmail && (
+          <div className="mt-8">
+            <EmailCapture isVisible={showEmail} />
+          </div>
+        )}
 
         {/* Tagline */}
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.6 }}
-          className="mt-12 text-center max-w-lg"
-        >
+        <div className="mt-12 text-center max-w-lg">
           <h2 className="text-lg font-semibold text-foreground mb-2">
             Real Vendor. Real Backend. Real Orders.
           </h2>
@@ -263,16 +225,11 @@ const Index = () => {
             This demo connects directly to a live restaurant backend. 
             Place an order and watch it flow through our agentic voice system in real-time.
           </p>
-          <motion.div 
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.8 }}
-            className="mt-4 flex items-center justify-center gap-2 text-xs text-muted-foreground/70"
-          >
-            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+          <div className="mt-4 flex items-center justify-center gap-2 text-xs text-muted-foreground/70">
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
             <span>Connected to sandbox environment</span>
-          </motion.div>
-        </motion.div>
+          </div>
+        </div>
       </main>
 
       {/* Live Panel - Always shows logs, order/transcript when active */}
