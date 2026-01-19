@@ -178,10 +178,9 @@ const Index = () => {
             </div>
             <div>
               <span className="text-xl font-bold text-foreground tracking-tight">
-                Zayup<span className="text-primary">.ai</span>
-                <span className="text-muted-foreground font-normal">/voice</span>
+                Zayup<span className="text-primary">OS</span>
               </span>
-              <p className="text-xs text-muted-foreground">Agentic Voice System</p>
+              <p className="text-xs text-muted-foreground">Voice Adapter</p>
             </div>
           </div>
 
