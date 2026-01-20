@@ -1,8 +1,6 @@
 import { useState, useEffect } from "react";
-import { Phone, PhoneOff, ShoppingCart, Mic, Pizza, X, Plus, Minus } from "lucide-react";
+import { Phone, PhoneOff, ShoppingCart, Mic, Pizza, X, Terminal } from "lucide-react";
 import { OrderItem } from "./OrderSummary";
-
-// Props now defined below
 
 interface PizzaBolisDemoProps {
   isExpanded: boolean;
@@ -175,11 +173,12 @@ const PizzaBolisDemo = ({
             )}
           </div>
 
-          {/* Right: Order Cart */}
-          <div className="w-full md:w-80 bg-white/50 p-4 md:p-6">
-            <div className="flex items-center gap-2 mb-4">
+          {/* Right: Order Cart + Agent Actions */}
+          <div className="w-full md:w-80 bg-white/50 p-4 md:p-6 flex flex-col">
+            {/* Cart Section */}
+            <div className="flex items-center gap-2 mb-3">
               <ShoppingCart className="w-5 h-5 text-bolis-orange" />
-              <h4 className="font-bold text-bolis-brown">Your Cart</h4>
+              <h4 className="font-bold text-bolis-brown text-sm">Your Cart</h4>
               {orderItems.length > 0 && (
                 <span className="ml-auto text-xs bg-bolis-orange text-white px-2 py-0.5 rounded-full">
                   {orderItems.length}
@@ -187,25 +186,25 @@ const PizzaBolisDemo = ({
               )}
             </div>
 
-            <div className="space-y-3 min-h-[120px] max-h-[200px] overflow-y-auto">
+            <div className="space-y-2 min-h-[80px] max-h-[140px] overflow-y-auto">
               {orderItems.length === 0 ? (
-                <div className="text-center py-8 text-bolis-brown/50">
-                  <Pizza className="w-10 h-10 mx-auto mb-2 opacity-30" />
-                  <p className="text-sm">Your order will appear here</p>
+                <div className="text-center py-4 text-bolis-brown/50">
+                  <Pizza className="w-8 h-8 mx-auto mb-1 opacity-30" />
+                  <p className="text-xs">Your order will appear here</p>
                 </div>
               ) : (
                 orderItems.map((item) => (
                   <div
                     key={item.id}
-                    className="flex items-start justify-between p-3 bg-white rounded-xl shadow-sm"
+                    className="flex items-start justify-between p-2 bg-white rounded-lg shadow-sm"
                   >
                     <div className="flex-1">
-                      <p className="font-semibold text-bolis-brown text-sm">{item.name}</p>
+                      <p className="font-semibold text-bolis-brown text-xs">{item.name}</p>
                       {item.modification && (
-                        <p className="text-xs text-bolis-brown/60">{item.modification}</p>
+                        <p className="text-[10px] text-bolis-brown/60">{item.modification}</p>
                       )}
                     </div>
-                    <span className="font-bold text-bolis-orange">${item.price.toFixed(2)}</span>
+                    <span className="font-bold text-bolis-orange text-sm">${item.price.toFixed(2)}</span>
                   </div>
                 ))
               )}
@@ -213,13 +212,37 @@ const PizzaBolisDemo = ({
 
             {/* Total */}
             {orderItems.length > 0 && (
-              <div className="mt-4 pt-4 border-t-2 border-dashed border-bolis-orange/30">
+              <div className="mt-3 pt-3 border-t-2 border-dashed border-bolis-orange/30">
                 <div className="flex justify-between items-center">
-                  <span className="font-bold text-bolis-brown">Total</span>
-                  <span className="text-2xl font-bold text-bolis-orange">${total.toFixed(2)}</span>
+                  <span className="font-semibold text-bolis-brown text-sm">Total</span>
+                  <span className="text-lg font-bold text-bolis-orange">${total.toFixed(2)}</span>
                 </div>
               </div>
             )}
+
+            {/* Agent Actions Terminal */}
+            <div className="mt-4 pt-4 border-t border-bolis-brown/10">
+              <div className="flex items-center gap-2 mb-2">
+                <Terminal className="w-4 h-4 text-bolis-brown/70" />
+                <h4 className="font-semibold text-bolis-brown/80 text-xs uppercase tracking-wide">Agent Actions</h4>
+              </div>
+              <div className="bg-bolis-brown/5 rounded-lg p-3 font-mono text-[10px] text-bolis-brown/70 space-y-1 max-h-[80px] overflow-y-auto">
+                {isActive ? (
+                  <>
+                    <div className="flex items-center gap-1.5">
+                      <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
+                      <span>agent.connected</span>
+                    </div>
+                    {orderItems.length > 0 && (
+                      <div className="text-bolis-orange">→ cart.add({orderItems.length} items)</div>
+                    )}
+                    <div className="text-bolis-brown/50">⌁ awaiting next action...</div>
+                  </>
+                ) : (
+                  <div className="text-bolis-brown/40">⌁ agent.idle — tap to connect</div>
+                )}
+              </div>
+            </div>
           </div>
         </div>
       )}
