@@ -179,7 +179,7 @@ const PizzaBolisDemo = ({
           <div className="w-full md:w-80 bg-white/50 p-4 md:p-6">
             <div className="flex items-center gap-2 mb-4">
               <ShoppingCart className="w-5 h-5 text-bolis-orange" />
-              <h4 className="font-bold text-bolis-brown">Your Order</h4>
+              <h4 className="font-bold text-bolis-brown">Your Cart</h4>
               {orderItems.length > 0 && (
                 <span className="ml-auto text-xs bg-bolis-orange text-white px-2 py-0.5 rounded-full">
                   {orderItems.length}
