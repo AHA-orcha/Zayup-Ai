@@ -35,6 +35,7 @@ const PizzaBolisDemo = ({
 
   return (
     <div
+      onClick={!isExpanded ? onStart : undefined}
       className={`
         relative overflow-hidden rounded-3xl border-4 border-bolis-orange
         transition-all duration-500 ease-out
@@ -70,7 +71,7 @@ const PizzaBolisDemo = ({
           
           {isExpanded && isActive && (
             <button
-              onClick={onStop}
+              onClick={(e) => { e.stopPropagation(); onStop(); }}
               className="p-2 rounded-full bg-white/20 hover:bg-white/30 transition-colors"
             >
               <X className="w-5 h-5 text-white" />
@@ -81,10 +82,7 @@ const PizzaBolisDemo = ({
 
       {/* Collapsed State - Tap to expand and start */}
       {!isExpanded && (
-        <button
-          onClick={onStart}
-          className="w-full p-5 md:p-6 text-center hover:bg-bolis-cream/50 transition-colors"
-        >
+        <div className="w-full p-5 md:p-6 text-center">
           <p className="text-bolis-brown font-medium text-sm md:text-base mb-2">
             Tap to try voice ordering
           </p>
@@ -92,7 +90,7 @@ const PizzaBolisDemo = ({
             <Phone className="w-4 h-4" />
             <span className="text-sm font-semibold">Start Demo Call</span>
           </div>
-        </button>
+        </div>
       )}
 
       {/* Expanded State - Full Demo Interface */}
