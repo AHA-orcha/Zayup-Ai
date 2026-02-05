@@ -1,1 +1,4 @@
 project_id = "osyjzqerwthdfhxcdyji"
+
+[functions.rp2a-proxy]
+verify_jwt = false

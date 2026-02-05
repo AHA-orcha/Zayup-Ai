@@ -8,6 +8,7 @@ import { OrderItem } from "@/components/OrderSummary";
 import { LogEntry } from "@/components/AdminPanel";
 import { useVapi } from "@/hooks/useVapi";
 import { useRealtimeCart } from "@/hooks/useRealtimeCart";
+import { useRP2A } from "@/hooks/useRP2A";
 
 const DEMO_ASSISTANT_ID = "c8951f28-76ac-4c9e-ba73-b51fb6b8af6f";
 
@@ -23,6 +24,9 @@ const Index = () => {
   const { items: realtimeItems, clearCart } = useRealtimeCart(
     isRealtimeMode ? sessionIdRef.current : null
   );
+
+  // RP2A backend hook
+  const { startSession, addItem: rp2aAddItem, modifyItem: rp2aModifyItem, removeItem: rp2aRemoveItem, validateOrder } = useRP2A();
   
   // Use realtime items when connected, fallback to local state
   const orderItems: OrderItem[] = isRealtimeMode 
@@ -60,9 +64,61 @@ const Index = () => {
   }, [addLog, isRealtimeMode]);
 
   // Handle MCP function calls from Vapi
-  const handleFunctionCall = useCallback((name: string, params: Record<string, unknown>) => {
+  const handleFunctionCall = useCallback(async (name: string, params: Record<string, unknown>) => {
     addLog("MCP", `${name} called`);
 
+    // When in realtime mode, route cart operations through RP2A
+    if (isRealtimeMode) {
+      try {
+        switch (name) {
+          case "add_item":
+          case "add-item":
+          case "addItem":
+            await rp2aAddItem(sessionIdRef.current, {
+              name: (params.name as string) || (params.item_name as string),
+              size: params.size as string,
+              modifications: params.modifications as string[],
+              price: (params.price as number) || 0,
+            });
+            addLog("MCP", `item-add: ${params.name || params.item_name}`);
+            return;
+
+          case "modify_item":
+          case "modify-item":
+          case "modifyItem":
+            await rp2aModifyItem(
+              sessionIdRef.current,
+              params.item_id as string,
+              params.modifications as string[]
+            );
+            addLog("MCP", `Modified: ${params.item_name || params.name}`);
+            return;
+
+          case "remove_item":
+          case "remove-item":
+          case "removeItem":
+            await rp2aRemoveItem(sessionIdRef.current, params.item_id as string);
+            addLog("MCP", `Removed: ${params.item_name || params.name}`);
+            return;
+
+          case "place_order":
+          case "place-order":
+          case "placeOrder":
+          case "submit_order":
+          case "submitOrder":
+          case "order-validate":
+            await validateOrder(sessionIdRef.current, { email: params.email as string });
+            addLog("API", "Order validated & submitted");
+            addLog("SYSTEM", "Sending receipt email...");
+            return;
+        }
+      } catch (error) {
+        addLog("SYSTEM", `RP2A error: ${(error as Error).message}`);
+        // Fall through to local handling if RP2A fails
+      }
+    }
+
+    // Local fallback handling (non-realtime mode or RP2A failure)
     switch (name) {
       case "add_item":
       case "add-item":
@@ -133,7 +189,7 @@ const Index = () => {
       default:
         addLog("MCP", `Function: ${name}`);
     }
-  }, [addOrderItem, addLog]);
+  }, [addOrderItem, addLog, isRealtimeMode, rp2aAddItem, rp2aModifyItem, rp2aRemoveItem, validateOrder]);
 
   const { status, startCall, stopCall } = useVapi({
     onCallStart: () => {
@@ -166,11 +222,22 @@ const Index = () => {
     },
   });
 
-  const handleStartCall = useCallback(() => {
+  const handleStartCall = useCallback(async () => {
     setIsDemoExpanded(true);
+    setIsRealtimeMode(true);
+    
+    // Initialize RP2A session
+    try {
+      await startSession(sessionIdRef.current);
+      addLog("API", "RP2A session initialized");
+    } catch (error) {
+      addLog("SYSTEM", "RP2A unavailable, using local mode");
+      setIsRealtimeMode(false);
+    }
+    
     startCall(DEMO_ASSISTANT_ID);
     addLog("SYSTEM", "Initiating connection...");
-  }, [startCall, addLog]);
+  }, [startCall, addLog, startSession]);
 
   const handleStopCall = useCallback(() => {
     stopCall();
