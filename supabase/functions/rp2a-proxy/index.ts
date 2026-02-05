@@ -67,6 +67,8 @@ serve(async (req) => {
       if (queryString) url += `?${queryString}`;
     }
 
+    console.log(`RP2A Request: ${endpoint.method} ${url}`);
+
     // Forward request to RP2A backend with JWT auth
     const response = await fetch(url, {
       method: endpoint.method,
@@ -78,6 +80,7 @@ serve(async (req) => {
     });
 
     const responseText = await response.text();
+    console.log(`RP2A Response: ${response.status} - ${responseText.substring(0, 200)}`);
     
     // Try to parse as JSON, fallback to error message
     let data;
