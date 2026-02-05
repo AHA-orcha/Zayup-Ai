@@ -12,8 +12,17 @@ serve(async (req) => {
   }
 
   const RP2A_API_URL = Deno.env.get('RP2A_API_URL');
+  const RP2A_JWT_TOKEN = Deno.env.get('RP2A_JWT_TOKEN');
+  
   if (!RP2A_API_URL) {
-    return new Response(JSON.stringify({ error: 'RP2A backend not configured' }), {
+    return new Response(JSON.stringify({ error: 'RP2A_API_URL not configured' }), {
+      status: 500,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+    });
+  }
+
+  if (!RP2A_JWT_TOKEN) {
+    return new Response(JSON.stringify({ error: 'RP2A_JWT_TOKEN not configured' }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' }
     });
@@ -22,14 +31,21 @@ serve(async (req) => {
   try {
     const { action, payload } = await req.json();
 
-    // Map actions to RP2A endpoints
+    // Map actions to RP2A production endpoints
     const endpoints: Record<string, { method: string; path: string }> = {
-      'session-start':  { method: 'POST', path: '/api/session/start' },
-      'menu-export':    { method: 'GET',  path: '/api/menu' },
-      'add-item':       { method: 'POST', path: '/api/cart/add' },
-      'modify-item':    { method: 'POST', path: '/api/cart/modify' },
-      'remove-item':    { method: 'POST', path: '/api/cart/remove' },
-      'order-validate': { method: 'POST', path: '/api/order/validate' },
+      // Order endpoints
+      'order-start':    { method: 'POST', path: '/api/order/start' },
+      'order-add-item': { method: 'POST', path: '/api/order/add-item' },
+      'order-place':    { method: 'POST', path: '/api/order/place' },
+      
+      // Menu endpoints
+      'menu-items':     { method: 'GET',  path: '/api/menu/items' },
+      'menu-search':    { method: 'POST', path: '/api/menu/search' },
+      'categories':     { method: 'GET',  path: '/api/categories' },
+      'specials':       { method: 'GET',  path: '/api/specials' },
+      
+      // Health check
+      'health':         { method: 'GET',  path: '/health' },
     };
 
     const endpoint = endpoints[action];
@@ -40,20 +56,36 @@ serve(async (req) => {
       });
     }
 
-    // Build request URL - for GET requests, append session_id as query param
+    // Build request URL with query params for GET requests
     let url = `${RP2A_API_URL}${endpoint.path}`;
-    if (endpoint.method === 'GET' && payload?.session_id) {
-      url += `?session_id=${encodeURIComponent(payload.session_id)}`;
+    if (endpoint.method === 'GET' && payload) {
+      const params = new URLSearchParams();
+      if (payload.orderType) params.append('orderType', payload.orderType);
+      if (payload.page) params.append('page', String(payload.page));
+      if (payload.limit) params.append('limit', String(payload.limit));
+      const queryString = params.toString();
+      if (queryString) url += `?${queryString}`;
     }
 
-    // Forward request to RP2A backend
+    // Forward request to RP2A backend with JWT auth
     const response = await fetch(url, {
       method: endpoint.method,
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${RP2A_JWT_TOKEN}`
+      },
       body: endpoint.method !== 'GET' ? JSON.stringify(payload) : undefined,
     });
 
-    const data = await response.json();
+    const responseText = await response.text();
+    
+    // Try to parse as JSON, fallback to error message
+    let data;
+    try {
+      data = JSON.parse(responseText);
+    } catch {
+      data = { error: responseText || `HTTP ${response.status}` };
+    }
 
     return new Response(JSON.stringify(data), {
       status: response.status,

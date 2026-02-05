@@ -1,51 +1,85 @@
 import { supabase } from "@/integrations/supabase/client";
 
 export interface RP2APayload {
-  session_id: string;
   [key: string]: unknown;
 }
 
-export interface RP2ACartItem {
-  name: string;
+export interface RP2AOrderItem {
+  category: string;
+  item: string;
   size?: string;
-  modifications?: string[];
-  price: number;
+  quantity?: number;
+  specialInstructions?: string;
+  ingredients?: {
+    ingredient: string;
+    isLeftHalf?: boolean;
+    isRightHalf?: boolean;
+    ordered: boolean;
+  }[];
+}
+
+export interface RP2ACustomer {
+  name: string;
+  phone: string;
+  email?: string;
+}
+
+export interface RP2ADeliveryAddress {
+  address: string;
+  city?: string;
+  state?: string;
+  zipCode?: string;
+  aptNumber?: string;
 }
 
 export const useRP2A = () => {
-  const callRP2A = async (action: string, payload: RP2APayload) => {
+  const callRP2A = async (action: string, payload: RP2APayload = {}) => {
     const { data, error } = await supabase.functions.invoke('rp2a-proxy', {
       body: { action, payload }
     });
     
     if (error) throw error;
+    if (data?.error) throw new Error(data.error);
     return data;
   };
 
-  const startSession = (sessionId: string) => 
-    callRP2A('session-start', { session_id: sessionId });
+  // Order operations
+  const startOrder = (orderType: 'Delivery' | 'Pickup' = 'Delivery') => 
+    callRP2A('order-start', { orderType });
 
-  const fetchMenu = (sessionId: string) => 
-    callRP2A('menu-export', { session_id: sessionId });
+  const addItemToOrder = (orderNum: number, item: RP2AOrderItem) =>
+    callRP2A('order-add-item', { orderNum, ...item });
 
-  const addItem = (sessionId: string, item: RP2ACartItem) =>
-    callRP2A('add-item', { session_id: sessionId, ...item });
+  const placeOrder = (
+    orderNum: number, 
+    customer: RP2ACustomer, 
+    deliveryAddress?: RP2ADeliveryAddress
+  ) => callRP2A('order-place', { orderNum, customer, deliveryAddress });
 
-  const modifyItem = (sessionId: string, itemId: string, modifications: string[]) =>
-    callRP2A('modify-item', { session_id: sessionId, item_id: itemId, modifications });
+  // Menu operations
+  const getMenuItems = (orderType: 'Delivery' | 'Pickup' = 'Delivery', page = 1, limit = 50) =>
+    callRP2A('menu-items', { orderType, page, limit });
 
-  const removeItem = (sessionId: string, itemId: string) =>
-    callRP2A('remove-item', { session_id: sessionId, item_id: itemId });
+  const searchMenu = (query: string, orderType: 'Delivery' | 'Pickup' = 'Delivery', page = 1, limit = 20) =>
+    callRP2A('menu-search', { query, orderType, page, limit });
 
-  const validateOrder = (sessionId: string, customerInfo: { email?: string; phone?: string }) =>
-    callRP2A('order-validate', { session_id: sessionId, ...customerInfo });
+  const getCategories = (orderType: 'Delivery' | 'Pickup' = 'Delivery') =>
+    callRP2A('categories', { orderType });
+
+  const getSpecials = (orderType: 'Delivery' | 'Pickup' = 'Delivery') =>
+    callRP2A('specials', { orderType });
+
+  // Health check
+  const healthCheck = () => callRP2A('health');
 
   return { 
-    startSession, 
-    fetchMenu, 
-    addItem, 
-    modifyItem, 
-    removeItem, 
-    validateOrder 
+    startOrder,
+    addItemToOrder,
+    placeOrder,
+    getMenuItems,
+    searchMenu,
+    getCategories,
+    getSpecials,
+    healthCheck
   };
 };

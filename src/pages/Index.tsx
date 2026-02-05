@@ -26,7 +26,8 @@ const Index = () => {
   );
 
   // RP2A backend hook
-  const { startSession, addItem: rp2aAddItem, modifyItem: rp2aModifyItem, removeItem: rp2aRemoveItem, validateOrder } = useRP2A();
+  const { startOrder, addItemToOrder, placeOrder } = useRP2A();
+  const orderNumRef = useRef<number | null>(null);
   
   // Use realtime items when connected, fallback to local state
   const orderItems: OrderItem[] = isRealtimeMode 
@@ -67,38 +68,21 @@ const Index = () => {
   const handleFunctionCall = useCallback(async (name: string, params: Record<string, unknown>) => {
     addLog("MCP", `${name} called`);
 
-    // When in realtime mode, route cart operations through RP2A
-    if (isRealtimeMode) {
+    // When in realtime mode with valid orderNum, route cart operations through RP2A
+    if (isRealtimeMode && orderNumRef.current) {
       try {
         switch (name) {
           case "add_item":
           case "add-item":
           case "addItem":
-            await rp2aAddItem(sessionIdRef.current, {
-              name: (params.name as string) || (params.item_name as string),
+            await addItemToOrder(orderNumRef.current, {
+              category: (params.category as string) || "Pizza",
+              item: (params.name as string) || (params.item_name as string),
               size: params.size as string,
-              modifications: params.modifications as string[],
-              price: (params.price as number) || 0,
+              quantity: (params.quantity as number) || 1,
+              specialInstructions: params.specialInstructions as string,
             });
             addLog("MCP", `item-add: ${params.name || params.item_name}`);
-            return;
-
-          case "modify_item":
-          case "modify-item":
-          case "modifyItem":
-            await rp2aModifyItem(
-              sessionIdRef.current,
-              params.item_id as string,
-              params.modifications as string[]
-            );
-            addLog("MCP", `Modified: ${params.item_name || params.name}`);
-            return;
-
-          case "remove_item":
-          case "remove-item":
-          case "removeItem":
-            await rp2aRemoveItem(sessionIdRef.current, params.item_id as string);
-            addLog("MCP", `Removed: ${params.item_name || params.name}`);
             return;
 
           case "place_order":
@@ -106,9 +90,21 @@ const Index = () => {
           case "placeOrder":
           case "submit_order":
           case "submitOrder":
-          case "order-validate":
-            await validateOrder(sessionIdRef.current, { email: params.email as string });
-            addLog("API", "Order validated & submitted");
+            await placeOrder(
+              orderNumRef.current,
+              {
+                name: (params.customer_name as string) || "Customer",
+                phone: (params.phone as string) || "000-000-0000",
+                email: params.email as string,
+              },
+              params.address ? {
+                address: params.address as string,
+                city: params.city as string,
+                state: params.state as string,
+                zipCode: params.zipCode as string,
+              } : undefined
+            );
+            addLog("API", "Order placed successfully");
             addLog("SYSTEM", "Sending receipt email...");
             return;
         }
@@ -189,7 +185,7 @@ const Index = () => {
       default:
         addLog("MCP", `Function: ${name}`);
     }
-  }, [addOrderItem, addLog, isRealtimeMode, rp2aAddItem, rp2aModifyItem, rp2aRemoveItem, validateOrder]);
+  }, [addOrderItem, addLog, isRealtimeMode, addItemToOrder, placeOrder]);
 
   const { status, startCall, stopCall } = useVapi({
     onCallStart: () => {
@@ -226,18 +222,19 @@ const Index = () => {
     setIsDemoExpanded(true);
     setIsRealtimeMode(true);
     
-    // Initialize RP2A session
+    // Initialize RP2A order
     try {
-      await startSession(sessionIdRef.current);
-      addLog("API", "RP2A session initialized");
+      const result = await startOrder('Delivery');
+      orderNumRef.current = result.orderNum;
+      addLog("API", `RP2A order started: #${result.orderNum}`);
     } catch (error) {
-      addLog("SYSTEM", "RP2A unavailable, using local mode");
+      addLog("SYSTEM", `RP2A unavailable: ${(error as Error).message}`);
       setIsRealtimeMode(false);
     }
     
     startCall(DEMO_ASSISTANT_ID);
     addLog("SYSTEM", "Initiating connection...");
-  }, [startCall, addLog, startSession]);
+  }, [startCall, addLog, startOrder]);
 
   const handleStopCall = useCallback(() => {
     stopCall();
