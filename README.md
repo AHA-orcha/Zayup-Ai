@@ -1,4 +1,7 @@
-Zayup.ai
+                                -- Zayup.ai
+https://zpos.zayup.ai
+https://zayup.ai
+
 Autonomous Restaurant Vendor Automation
 Official Website | Live Voice Demo
 Zayup.ai is a collaborative services-based repository developed between AHA and Zayup.ai. It serves as an intelligent orchestration layer designed to automate customer interactions and restaurant operations by bridging natural conversation with enterprise Point of Sale (POS) systems.
